@@ -7,6 +7,12 @@ import { formatCurrency } from '@/lib/utils';
 import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button';
 import { SuccessCelebration } from '@/components/ui/success-celebration';
 
+type AccountOption = {
+  id: string;
+  label: string;
+  balance: string;
+};
+
 export default function TransferPage() {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -14,7 +20,7 @@ export default function TransferPage() {
   const [note, setNote] = useState('');
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [accounts, setAccounts] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<AccountOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -22,7 +28,7 @@ export default function TransferPage() {
     fetch('/api/accounts')
       .then(res => res.json())
       .then(data => {
-        const mapped = data.map((a: any) => ({
+        const mapped: AccountOption[] = (Array.isArray(data) ? data : []).map((a: { id: string; name: string; balance: number | string }) => ({
           id: a.id,
           label: a.name,
           balance: formatCurrency(Number(a.balance)),
@@ -99,7 +105,7 @@ export default function TransferPage() {
 
   if (success) {
     return (
-      <SuccessCelebration>
+      <SuccessCelebration confetti>
         <div className="max-w-lg mx-auto px-4">
           <div className="flex flex-col items-center justify-center py-12">
             <div className="w-16 h-16 rounded-full bg-green-dim flex items-center justify-center mb-4">

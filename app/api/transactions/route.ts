@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server"
+import type { Prisma } from "@prisma/client"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/db"
 import { toNumber } from "@/lib/serialize"
-import { isDemoMode, getDemoTransactions } from "@/lib/demo-data"
+import {
+  isDemoMode,
+  getDemoTransactions,
+  demoCreateTransaction,
+} from "@/lib/demo-data"
 
 export async function GET(request: Request) {
   try {
@@ -21,7 +26,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const type = searchParams.get("type")
 
-    const where: Record<string, any> = { userId: session.user.id }
+    const where: Prisma.TransactionWhereInput = { userId: session.user.id }
     if (type) {
       where.type = type
     }
@@ -49,13 +54,22 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const body = await request.json()
+
+    if (isDemoMode()) {
+      const result = demoCreateTransaction(body)
+      if (!result.success) {
+        const status = result.error === "Insufficient balance" ? 400 : 404
+        return NextResponse.json({ error: result.error }, { status })
+      }
+      return NextResponse.json(result.transaction, { status: 201 })
+    }
+
     const session = await auth()
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
-
-    const body = await request.json()
 
     const transaction = await prisma.transaction.create({
       data: {

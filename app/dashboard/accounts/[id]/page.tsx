@@ -1,46 +1,137 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Settings, DollarSign, Snowflake, ArrowUpRight, ArrowDownLeft, TrendingUp } from 'lucide-react';
+import { useParams } from 'next/navigation';
+import { ArrowLeft, Settings, DollarSign, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { formatCurrency, formatRelativeTime, getInitials } from '@/lib/utils';
 
-const account = {
-  id: '1', name: 'Emma', type: 'child', status: 'active',
-  walletAddress: '0x742d...3a8B', initials: 'EM',
+type Account = {
+  id: string;
+  name: string;
+  type: string;
+  balance: number;
+  currency?: string;
+  isActive?: boolean;
 };
 
-const transactions = [
-  { id: '1', description: 'Allowance', amount: 25.00, type: 'deposit', date: 'Today' },
-  { id: '2', description: 'App Store', amount: -4.99, type: 'withdrawal', date: 'Yesterday' },
-  { id: '3', description: 'Chore Reward', amount: 10.00, type: 'deposit', date: '2 days ago' },
-  { id: '4', description: 'Snack Shop', amount: -7.50, type: 'withdrawal', date: '3 days ago' },
-];
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
-}
+type Transaction = {
+  id: string;
+  accountId: string;
+  amount: number | string;
+  description?: string | null;
+  category?: string | null;
+  createdAt: string;
+};
 
 export default function AccountDetailPage() {
-  const [balance, setBalance] = useState(842.50);
-  const [frozen, setFrozen] = useState(false);
+  const { toast } = useToast();
+  const params = useParams<{ id: string }>();
+  const accountId = params.id;
+
+  const [account, setAccount] = useState<Account | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showFundForm, setShowFundForm] = useState(false);
   const [fundAmount, setFundAmount] = useState('');
   const [processing, setProcessing] = useState(false);
-  const { toast } = useToast();
 
-  const handleFund = () => {
-    const amount = parseFloat(fundAmount);
-    if (!amount || amount <= 0) return;
+  const accountTransactions = useMemo(
+    () => transactions.filter((tx) => tx.accountId === accountId).slice(0, 10),
+    [transactions, accountId]
+  );
+
+  const loadData = useCallback(async () => {
+    if (!accountId) return;
+
+    setLoading(true);
+    try {
+      const [accountsRes, txRes] = await Promise.all([
+        fetch('/api/accounts', { cache: 'no-store' }),
+        fetch('/api/transactions', { cache: 'no-store' }),
+      ]);
+
+      const [accountsData, txData] = await Promise.all([accountsRes.json(), txRes.json()]);
+      const accounts = Array.isArray(accountsData) ? accountsData : [];
+      const current = accounts.find((a: Account) => a.id === accountId) || null;
+
+      setAccount(current);
+      setTransactions(Array.isArray(txData) ? txData : []);
+    } finally {
+      setLoading(false);
+    }
+  }, [accountId]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const handleFund = async () => {
+    if (!account) return;
+
+    const amount = Number(fundAmount);
+    if (!Number.isFinite(amount) || amount <= 0) return;
+
     setProcessing(true);
-    setTimeout(() => {
-      setBalance((prev) => prev + amount);
-      toast.success(`Funded $${amount.toFixed(2)} successfully`);
+    try {
+      const res = await fetch('/api/fund', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accountId: account.id,
+          amount,
+          source: 'Manual top up',
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Funding failed');
+      }
+
+      toast.success(`Funded ${formatCurrency(amount)} successfully`);
       setFundAmount('');
       setShowFundForm(false);
+      await loadData();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Funding failed');
+    } finally {
       setProcessing(false);
-    }, 1000);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="max-w-3xl mx-auto px-4">
+        <div className="flex items-center gap-3 mb-6">
+          <Link href="/dashboard/accounts" className="text-text-muted hover:text-text transition-colors">
+            <ArrowLeft size={20} />
+          </Link>
+          <h1 className="text-2xl font-bold">Account Details</h1>
+        </div>
+        <div className="flex items-center justify-center py-20">
+          <div className="w-6 h-6 border-2 border-green border-t-transparent rounded-full animate-spin" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!account) {
+    return (
+      <div className="max-w-3xl mx-auto px-4">
+        <div className="flex items-center gap-3 mb-6">
+          <Link href="/dashboard/accounts" className="text-text-muted hover:text-text transition-colors">
+            <ArrowLeft size={20} />
+          </Link>
+          <h1 className="text-2xl font-bold">Account Details</h1>
+        </div>
+        <div className="bg-bg-card border border-border rounded-lg p-6 text-center text-text-muted">
+          Account not found.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl mx-auto px-4">
@@ -52,57 +143,41 @@ export default function AccountDetailPage() {
       </div>
 
       <div className="bg-bg-card border border-border rounded-lg p-4 md:p-6 mb-4">
-        {frozen && (
-          <div className="flex items-center gap-2 bg-blue/10 border border-blue/20 rounded-md p-3 mb-4 text-sm text-blue">
-            <Snowflake size={16} className="shrink-0" />
-            This account is currently frozen. Transactions are disabled.
-          </div>
-        )}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-full bg-green-dim text-green flex items-center justify-center text-lg font-semibold">
-              {account.initials}
+              {getInitials(account.name)}
             </div>
             <div>
               <h2 className="text-xl font-bold">{account.name}</h2>
-              <p className="text-sm text-text-muted capitalize">{account.type} account &middot; {account.walletAddress}</p>
+              <p className="text-sm text-text-muted capitalize">{account.type} account</p>
             </div>
           </div>
-          {frozen ? (
+          {account.isActive === false ? (
             <span className="text-xs bg-blue/10 text-blue px-2.5 py-1 rounded-full">Frozen</span>
           ) : (
             <span className="text-xs bg-green-dim text-green px-2.5 py-1 rounded-full">Active</span>
           )}
         </div>
-        <p className="text-2xl md:text-[36px] font-bold mt-4">{formatCurrency(balance)}</p>
+
+        <p className="text-2xl md:text-[36px] font-bold mt-4">{formatCurrency(Number(account.balance))}</p>
+
         <div className="flex flex-wrap items-center gap-2 mt-4">
           <button
-            onClick={() => !frozen && setShowFundForm(!showFundForm)}
-            disabled={frozen}
-            className={`flex items-center gap-2 font-semibold px-4 py-2 rounded-md text-sm transition-opacity ${
-              frozen
-                ? 'bg-bg-elevated text-text-muted cursor-not-allowed'
-                : 'bg-green text-black hover:opacity-90'
-            }`}
+            onClick={() => setShowFundForm(!showFundForm)}
+            className="flex items-center gap-2 bg-green text-black font-semibold px-4 py-2 rounded-md text-sm hover:opacity-90 transition-opacity"
           >
             <DollarSign size={16} /> Fund
           </button>
-          <button
-            onClick={() => setFrozen(!frozen)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm transition-colors ${
-              frozen
-                ? 'bg-blue/10 text-blue border border-blue/20 hover:bg-blue/20'
-                : 'bg-bg-elevated border border-border hover:border-border-hover'
-            }`}
+          <Link
+            href={`/dashboard/accounts/${account.id}/controls`}
+            className="flex items-center gap-2 bg-bg-elevated border border-border px-4 py-2 rounded-md text-sm hover:border-border-hover transition-colors"
           >
-            <Snowflake size={16} /> {frozen ? 'Unfreeze' : 'Freeze'}
-          </button>
-          <Link href={`/dashboard/accounts/${account.id}/controls`} className="flex items-center gap-2 bg-bg-elevated border border-border px-4 py-2 rounded-md text-sm hover:border-border-hover transition-colors">
             <Settings size={16} /> Controls
           </Link>
         </div>
 
-        {showFundForm && !frozen && (
+        {showFundForm && (
           <div className="mt-4 p-4 bg-bg-elevated border border-border rounded-lg">
             <label className="text-sm text-text-secondary font-medium mb-2 block">Fund Amount</label>
             <div className="flex items-center gap-3">
@@ -124,7 +199,10 @@ export default function AccountDetailPage() {
                 {processing ? 'Processing...' : 'Confirm'}
               </button>
               <button
-                onClick={() => { setShowFundForm(false); setFundAmount(''); }}
+                onClick={() => {
+                  setShowFundForm(false);
+                  setFundAmount('');
+                }}
                 className="bg-bg-card border border-border px-4 py-2.5 rounded-md text-sm hover:border-border-hover transition-colors"
               >
                 Cancel
@@ -137,24 +215,30 @@ export default function AccountDetailPage() {
       <div className="bg-bg-card border border-border rounded-lg p-5">
         <h3 className="font-semibold mb-4">Recent Transactions</h3>
         <div className="flex flex-col">
-          {transactions.map((tx) => (
-            <div key={tx.id} className="flex items-center gap-3 py-3 border-b border-border last:border-0">
-              <div className={`w-9 h-9 rounded-md flex items-center justify-center ${tx.amount > 0 ? 'bg-green-dim text-green' : 'bg-bg-elevated text-text-muted'}`}>
-                {tx.amount > 0 ? <ArrowDownLeft size={16} /> : <ArrowUpRight size={16} />}
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">{tx.description}</p>
-                <p className="text-xs text-text-muted">{tx.date}</p>
-              </div>
-              <p className={`text-sm font-medium ${tx.amount > 0 ? 'text-green' : 'text-text'}`}>
-                {tx.amount > 0 ? '+' : ''}{formatCurrency(tx.amount)}
-              </p>
-            </div>
-          ))}
+          {accountTransactions.length === 0 ? (
+            <p className="text-sm text-text-muted">No transactions yet for this account.</p>
+          ) : (
+            accountTransactions.map((tx) => {
+              const amount = Number(tx.amount);
+              const isCredit = amount > 0;
+              return (
+                <div key={tx.id} className="flex items-center gap-3 py-3 border-b border-border last:border-0">
+                  <div className={`w-9 h-9 rounded-md flex items-center justify-center ${isCredit ? 'bg-green-dim text-green' : 'bg-bg-elevated text-text-muted'}`}>
+                    {isCredit ? <ArrowDownLeft size={16} /> : <ArrowUpRight size={16} />}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{tx.description || tx.category || 'Transaction'}</p>
+                    <p className="text-xs text-text-muted">{formatRelativeTime(tx.createdAt)}</p>
+                  </div>
+                  <p className={`text-sm font-medium ${isCredit ? 'text-green' : 'text-text'}`}>
+                    {isCredit ? '+' : ''}{formatCurrency(amount)}
+                  </p>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
-
-
     </div>
   );
 }

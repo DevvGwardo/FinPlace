@@ -27,10 +27,15 @@ export default function CreateAccountPage() {
     if (!name.trim()) return;
     setProcessing(true);
     try {
+      const parsedInitialFunding = initialFunding ? Number(initialFunding) : 0;
       const res = await fetch('/api/accounts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), type }),
+        body: JSON.stringify({
+          name: name.trim(),
+          type,
+          balance: Number.isFinite(parsedInitialFunding) && parsedInitialFunding > 0 ? parsedInitialFunding : 0,
+        }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -58,7 +63,7 @@ export default function CreateAccountPage() {
   if (success) {
     const typeLabel = accountTypes.find((t) => t.id === type)?.label ?? type;
     return (
-      <SuccessCelebration>
+      <SuccessCelebration confetti={false}>
         <div className="max-w-lg mx-auto px-4">
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <div className="w-16 h-16 rounded-full bg-green-dim flex items-center justify-center mb-5">

@@ -11,7 +11,7 @@ export default function AccountsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/accounts')
+    fetch('/api/accounts', { cache: 'no-store' })
       .then(res => res.json())
       .then(data => setAccounts(data))
       .finally(() => setLoading(false));

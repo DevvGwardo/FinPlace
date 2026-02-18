@@ -291,16 +291,22 @@ export function getDemoAccount(id: string) {
 export function createDemoAccount(data: {
   name: string
   type: string
+  balance?: number
   currency?: string
   color?: string
   icon?: string
 }) {
+  const startingBalance =
+    typeof data.balance === "number" && Number.isFinite(data.balance) && data.balance > 0
+      ? Math.round(data.balance * 100) / 100
+      : 0
+
   const account = {
     id: `acct-${uuid().slice(0, 8)}`,
     userId: DEMO_USER_ID,
     name: data.name,
     type: data.type,
-    balance: 0,
+    balance: startingBalance,
     currency: data.currency || "USD",
     color: data.color || "#22c55e",
     icon: data.icon || "wallet",
@@ -310,6 +316,25 @@ export function createDemoAccount(data: {
     updatedAt: new Date(),
   }
   accounts.unshift(account)
+
+  if (startingBalance > 0) {
+    transactions.unshift({
+      id: `tx-${uuid().slice(0, 8)}`,
+      userId: DEMO_USER_ID,
+      accountId: account.id,
+      type: "deposit",
+      amount: startingBalance,
+      currency: account.currency,
+      description: "Initial funding",
+      category: "Deposit",
+      status: "completed",
+      counterparty: null,
+      metadata: {},
+      createdAt: new Date(),
+      account: { name: account.name },
+    })
+  }
+
   return account
 }
 
@@ -440,6 +465,61 @@ export function demoFund(
   })
 
   return { success: true }
+}
+
+type DemoCreateTransactionInput = {
+  accountId: string
+  type: string
+  amount: number
+  currency?: string
+  description?: string
+  category?: string
+  status?: string
+  counterparty?: string
+  metadata?: Record<string, unknown>
+}
+
+export function demoCreateTransaction(
+  data: DemoCreateTransactionInput
+): {
+  success: boolean
+  error?: string
+  transaction?: Record<string, unknown>
+} {
+  const account = accounts.find((a) => a.id === data.accountId)
+  if (!account) return { success: false, error: "Account not found" }
+
+  const amount = Number(data.amount)
+  if (!Number.isFinite(amount) || amount === 0) {
+    return { success: false, error: "Amount must be a non-zero number" }
+  }
+
+  const nextBalance = Math.round((account.balance + amount) * 100) / 100
+  if (nextBalance < 0) {
+    return { success: false, error: "Insufficient balance" }
+  }
+
+  account.balance = nextBalance
+  account.updatedAt = new Date()
+
+  const transaction = {
+    id: `tx-${uuid().slice(0, 8)}`,
+    userId: DEMO_USER_ID,
+    accountId: data.accountId,
+    type: data.type,
+    amount,
+    currency: data.currency || "USD",
+    description: data.description ?? null,
+    category: data.category ?? null,
+    status: data.status || "completed",
+    counterparty: data.counterparty ?? null,
+    metadata: data.metadata ?? {},
+    createdAt: new Date(),
+    account: { name: account.name },
+  }
+
+  transactions.unshift(transaction)
+  return { success: true, transaction }
 }
 
 export function demoStake(data: {

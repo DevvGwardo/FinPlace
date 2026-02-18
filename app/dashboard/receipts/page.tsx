@@ -20,7 +20,7 @@ import {
   Tv,
   type LucideIcon,
 } from 'lucide-react';
-import { formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
 interface ReceiptItem {
@@ -40,6 +40,27 @@ interface ReceiptData {
   tax?: number;
   paymentMethod?: string;
 }
+
+type AccountOption = {
+  id: string;
+  name: string;
+};
+
+type TransactionWithReceipt = {
+  id: string;
+  amount: number | string;
+  category?: string | null;
+  counterparty?: string | null;
+  description?: string | null;
+  createdAt: string;
+  metadata?: {
+    isReceipt?: boolean;
+    merchant?: string;
+    items?: ReceiptItem[];
+    tax?: number;
+    paymentMethod?: string;
+  } | null;
+};
 
 const categoryOptions = [
   { label: 'Groceries', icon: ShoppingBag },
@@ -105,16 +126,29 @@ const scannedReceiptTemplates: Omit<ReceiptData, 'id'>[] = [
 export default function ReceiptsPage() {
   const { toast } = useToast();
   const [receipts, setReceipts] = useState<ReceiptData[]>([]);
+  const [accounts, setAccounts] = useState<AccountOption[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState('');
   const [loading, setLoading] = useState(true);
   const [selectedReceipt, setSelectedReceipt] = useState<ReceiptData | null>(null);
 
   useEffect(() => {
-    fetch('/api/transactions')
-      .then(res => res.json())
-      .then(data => {
+    Promise.all([
+      fetch('/api/transactions').then(res => res.json()),
+      fetch('/api/accounts').then(res => res.json()),
+    ])
+      .then(([data, accountsData]) => {
+        const mappedAccounts: AccountOption[] = Array.isArray(accountsData)
+          ? accountsData.map((a: { id: string; name: string }) => ({ id: a.id, name: a.name }))
+          : [];
+        setAccounts(mappedAccounts);
+        if (mappedAccounts.length > 0) {
+          setSelectedAccountId(mappedAccounts[0].id);
+        }
+
         // Filter transactions that have receipt metadata
-        const receiptTxs = data.filter((tx: any) => tx.metadata?.isReceipt);
-        setReceipts(receiptTxs.map((tx: any) => ({
+        const txs: TransactionWithReceipt[] = Array.isArray(data) ? data : [];
+        const receiptTxs = txs.filter((tx) => tx.metadata?.isReceipt);
+        setReceipts(receiptTxs.map((tx) => ({
           id: tx.id,
           merchant: tx.metadata?.merchant || tx.counterparty || tx.description || 'Unknown',
           amount: Math.abs(Number(tx.amount)),
@@ -165,15 +199,18 @@ export default function ReceiptsPage() {
   const confirmScannedReceipt = async () => {
     if (!scannedReceipt) return;
     try {
-      const accountsRes = await fetch('/api/accounts');
-      const accounts = await accountsRes.json();
-      if (accounts.length === 0) return;
+      if (!selectedAccountId) {
+        toast.error('Create a sub-account first');
+        return;
+      }
+
+      const selectedAccountName = accounts.find((a) => a.id === selectedAccountId)?.name || 'Sub-account';
 
       await fetch('/api/transactions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          accountId: accounts[0].id,
+          accountId: selectedAccountId,
           type: 'withdrawal',
           amount: -scannedReceipt.amount,
           description: scannedReceipt.merchant,
@@ -184,13 +221,13 @@ export default function ReceiptsPage() {
             merchant: scannedReceipt.merchant,
             items: scannedReceipt.items,
             tax: scannedReceipt.tax,
-            paymentMethod: scannedReceipt.paymentMethod,
+            paymentMethod: `${scannedReceipt.paymentMethod || 'Card'} • ${selectedAccountName}`,
           },
         }),
       });
 
       setReceipts(prev => [scannedReceipt, ...prev]);
-      toast.success('Receipt saved');
+      toast.success(`Receipt saved for ${formatCurrency(scannedReceipt.amount)}`);
       setScanComplete(false);
       setScannedReceipt(null);
     } catch {
@@ -210,10 +247,10 @@ export default function ReceiptsPage() {
     if (!formMerchant || isNaN(amountVal)) return;
 
     try {
-      // Need an account to attach the transaction to
-      const accountsRes = await fetch('/api/accounts');
-      const accounts = await accountsRes.json();
-      if (accounts.length === 0) return;
+      if (!selectedAccountId) {
+        toast.error('Create a sub-account first');
+        return;
+      }
 
       const dateObj = new Date(formDate + 'T00:00:00');
       const items = formNotes
@@ -224,7 +261,7 @@ export default function ReceiptsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          accountId: accounts[0].id,
+          accountId: selectedAccountId,
           type: 'withdrawal',
           amount: -amountVal,
           description: formMerchant,
@@ -255,7 +292,7 @@ export default function ReceiptsPage() {
       };
 
       setReceipts(prev => [newReceipt, ...prev]);
-      toast.success('Receipt added');
+      toast.success(`Receipt added for ${formatCurrency(amountVal)}`);
       setShowManualEntry(false);
       setFormMerchant(''); setFormAmount(''); setFormCategory('Groceries');
       setFormDate(new Date().toISOString().split('T')[0]); setFormNotes('');
@@ -374,11 +411,27 @@ export default function ReceiptsPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4">
-      <div className="flex items-center gap-3 mb-6">
-        <Link href="/dashboard" className="text-text-muted hover:text-text transition-colors">
-          <ArrowLeft size={20} />
-        </Link>
-        <h1 className="text-2xl font-bold">Receipts</h1>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <Link href="/dashboard" className="text-text-muted hover:text-text transition-colors">
+            <ArrowLeft size={20} />
+          </Link>
+          <h1 className="text-2xl font-bold">Receipts</h1>
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-text-muted font-medium">Charge Account</label>
+          <select
+            value={selectedAccountId}
+            onChange={(e) => setSelectedAccountId(e.target.value)}
+            className="bg-bg-elevated border border-border rounded-md px-3 py-2 text-sm text-text focus:outline-none focus:border-green transition-colors"
+          >
+            {accounts.map((acc) => (
+              <option key={acc.id} value={acc.id}>
+                {acc.name}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Scan Area */}

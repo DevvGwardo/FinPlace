@@ -4,21 +4,32 @@ import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useConfetti } from '@/hooks/use-confetti';
 
-export function SuccessCelebration({ children }: { children: React.ReactNode }) {
+export function SuccessCelebration({
+  children,
+  confetti = false,
+}: {
+  children: React.ReactNode;
+  confetti?: boolean;
+}) {
   const { fireConfetti, setCanvas } = useConfetti();
 
   useEffect(() => {
-    const timer = setTimeout(fireConfetti, 150);
+    if (!confetti) return;
+    const timer = setTimeout(() => {
+      fireConfetti({ origin: { x: 0.5, y: 0.95 } });
+    }, 150);
     return () => clearTimeout(timer);
-  }, [fireConfetti]);
+  }, [confetti, fireConfetti]);
 
   return (
     <div className="relative">
-      <canvas
-        ref={setCanvas}
-        className="absolute inset-0 w-full h-full pointer-events-none"
-        style={{ zIndex: 0 }}
-      />
+      {confetti && (
+        <canvas
+          ref={setCanvas}
+          className="absolute inset-0 w-full h-full pointer-events-none"
+          style={{ zIndex: 0 }}
+        />
+      )}
       <motion.div
         className="relative"
         style={{ zIndex: 1 }}

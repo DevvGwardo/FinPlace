@@ -75,8 +75,7 @@ export default function StakingPage() {
         body: JSON.stringify({ status: 'completed' }),
       });
       if (!res.ok) throw new Error();
-      toast.success(`Successfully unstaked`);
-      fireConfetti();
+      toast.success(`Successfully unstaked ${formatCurrency(val)}`);
       setUnstakeAmount('');
       fetchStaking();
     } catch {

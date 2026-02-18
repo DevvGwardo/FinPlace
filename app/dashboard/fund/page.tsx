@@ -13,6 +13,11 @@ const sources = [
   { id: 'deposit', label: 'Deposit Address', desc: 'QR code & address', icon: QrCode },
 ];
 
+type AccountOption = {
+  id: string;
+  name: string;
+};
+
 export default function FundPage() {
   const { toast } = useToast();
   const [amount, setAmount] = useState('');
@@ -24,13 +29,14 @@ export default function FundPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/accounts')
+    fetch('/api/accounts', { cache: 'no-store' })
       .then(res => res.json())
       .then(data => {
+        const accountList: AccountOption[] = Array.isArray(data) ? data : [];
         const map: Record<string, string> = {};
-        data.forEach((a: any) => { map[a.id] = a.name; });
+        accountList.forEach((a) => { map[a.id] = a.name; });
         setDestinations(map);
-        const firstId = data[0]?.id;
+        const firstId = accountList[0]?.id;
         if (firstId) setDestination(firstId);
       })
       .finally(() => setLoading(false));
@@ -84,7 +90,7 @@ export default function FundPage() {
   if (success) {
     const sourceLabel = sources.find((s) => s.id === source)?.label ?? source;
     return (
-      <SuccessCelebration>
+      <SuccessCelebration confetti>
         <div className="max-w-lg mx-auto px-4">
           <div className="flex flex-col items-center justify-center py-12">
             <div className="w-16 h-16 rounded-full bg-green-dim flex items-center justify-center mb-4">
@@ -94,7 +100,7 @@ export default function FundPage() {
             <div className="w-full bg-bg-card border border-border rounded-lg p-5 mb-6">
               <div className="flex justify-between text-sm py-2">
                 <span className="text-text-secondary">Amount</span>
-                <span className="font-medium text-green">${Number(amount).toFixed(2)}</span>
+                <span className="font-medium text-green">{formatCurrency(Number(amount))}</span>
               </div>
               <div className="flex justify-between text-sm py-2 border-t border-border">
                 <span className="text-text-secondary">Source</span>
