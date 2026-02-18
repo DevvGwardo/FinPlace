@@ -2,9 +2,14 @@ import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/db"
 import { toNumber } from "@/lib/serialize"
+import { isDemoMode, getDemoStakingSummary, demoStake } from "@/lib/demo-data"
 
 export async function GET() {
   try {
+    if (isDemoMode()) {
+      return NextResponse.json(getDemoStakingSummary())
+    }
+
     const session = await auth()
 
     if (!session?.user?.id) {
@@ -58,6 +63,12 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    if (isDemoMode()) {
+      const { asset, amount, apy, lockPeriod } = await request.json()
+      const position = demoStake({ asset, amount, apy, lockPeriod })
+      return NextResponse.json(position, { status: 201 })
+    }
+
     const session = await auth()
 
     if (!session?.user?.id) {

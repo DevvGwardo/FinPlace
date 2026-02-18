@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Save } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 const categories = ['Gambling', 'Alcohol', 'Tobacco', 'Adult Content', 'Cryptocurrency', 'Travel'];
 
@@ -15,14 +16,7 @@ export default function AccountControlsPage() {
   const [blockedCategories, setBlockedCategories] = useState<string[]>(['Gambling', 'Alcohol']);
   const [frozen, setFrozen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState('');
-
-  useEffect(() => {
-    if (toast) {
-      const timer = setTimeout(() => setToast(''), 2500);
-      return () => clearTimeout(timer);
-    }
-  }, [toast]);
+  const { toast } = useToast();
 
   const toggleCategory = (cat: string) => {
     setBlockedCategories((prev) =>
@@ -34,7 +28,7 @@ export default function AccountControlsPage() {
     setSaving(true);
     setTimeout(() => {
       setSaving(false);
-      setToast('Controls saved successfully');
+      toast.success('Controls saved successfully');
     }, 1000);
   };
 
@@ -154,12 +148,6 @@ export default function AccountControlsPage() {
         </button>
       </div>
 
-      {/* Toast */}
-      {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-green text-black text-sm font-medium px-5 py-2.5 rounded-full shadow-lg z-50">
-          {toast}
-        </div>
-      )}
     </div>
   );
 }

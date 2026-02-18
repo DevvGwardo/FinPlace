@@ -2,16 +2,26 @@ import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/db"
 import { toNumber } from "@/lib/serialize"
+import { isDemoMode, demoTransfer } from "@/lib/demo-data"
 
 export async function POST(request: Request) {
   try {
+    const { fromAccountId, toAccountId, amount, note } = await request.json()
+
+    if (isDemoMode()) {
+      const result = demoTransfer(fromAccountId, toAccountId, amount, note)
+      if (!result.success) {
+        const status = result.error === "Insufficient balance" ? 400 : 404
+        return NextResponse.json({ error: result.error }, { status })
+      }
+      return NextResponse.json({ success: true })
+    }
+
     const session = await auth()
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
-
-    const { fromAccountId, toAccountId, amount, note } = await request.json()
 
     const fromAccount = await prisma.subAccount.findFirst({
       where: { id: fromAccountId, userId: session.user.id },

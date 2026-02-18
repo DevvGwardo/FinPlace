@@ -5,9 +5,11 @@ import Link from 'next/link';
 import { ArrowLeft, User, Shield, Bell, Link2, AlertTriangle, X } from 'lucide-react';
 import { useAuth } from '@/app/dashboard/providers';
 import { getInitials } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 export default function SettingsPage() {
   const { signOut, refreshUser } = useAuth();
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -19,7 +21,6 @@ export default function SettingsPage() {
   const [emailNotif, setEmailNotif] = useState(true);
   const [txAlerts, setTxAlerts] = useState(true);
 
-  const [toast, setToast] = useState('');
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -50,11 +51,6 @@ export default function SettingsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const showToast = (message: string) => {
-    setToast(message);
-    setTimeout(() => setToast(''), 2500);
-  };
-
   const handleSave = async () => {
     try {
       await fetch('/api/user', {
@@ -73,9 +69,9 @@ export default function SettingsPage() {
         }),
       });
       await refreshUser();
-      showToast('Settings saved successfully');
+      toast.success('Settings saved successfully');
     } catch {
-      showToast('Failed to save settings');
+      toast.error('Failed to save settings');
     }
   };
 
@@ -89,19 +85,19 @@ export default function SettingsPage() {
       });
       if (!res.ok) {
         const data = await res.json();
-        showToast(data.error || 'Failed to update password');
+        toast.error(data.error || 'Failed to update password');
         return;
       }
-      showToast('Password updated');
+      toast.success('Password updated');
       setShowPasswordForm(false);
       setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
     } catch {
-      showToast('Failed to update password');
+      toast.error('Failed to update password');
     }
   };
 
   const handleExportData = () => {
-    showToast("Data export started. You'll receive an email shortly.");
+    toast.info("Data export started. You'll receive an email shortly.");
   };
 
   const handleDeleteAccount = async () => {
@@ -109,7 +105,7 @@ export default function SettingsPage() {
       await fetch('/api/user', { method: 'DELETE' });
       signOut();
     } catch {
-      showToast('Failed to delete account');
+      toast.error('Failed to delete account');
     }
     setShowDeleteDialog(false);
     setDeleteConfirmText('');
@@ -378,12 +374,6 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* Toast */}
-      {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-green text-black text-sm font-medium px-6 py-3 rounded-full shadow-lg z-50 animate-in fade-in slide-in-from-bottom-2">
-          {toast}
-        </div>
-      )}
     </div>
   );
 }

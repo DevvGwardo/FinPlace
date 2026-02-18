@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Plus, Check, Clock, X, Camera } from 'lucide-react';
 import { formatDate, formatCurrency } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 type Task = {
   id: string;
@@ -29,6 +30,7 @@ const statusIcons = {
 };
 
 export default function TasksPage() {
+  const { toast } = useToast();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -78,7 +80,10 @@ export default function TasksPage() {
       }, ...prev]);
       setFormName(''); setFormAssignee(''); setFormReward(''); setFormDue('');
       setShowForm(false);
-    } catch {}
+      toast.success('Task created');
+    } catch {
+      toast.error('Failed to create task');
+    }
   };
 
   const handleApprove = async (id: string) => {
@@ -88,8 +93,13 @@ export default function TasksPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'approved' }),
       });
-      if (res.ok) setTasks(tasks.map(t => t.id === id ? { ...t, status: 'approved' as const } : t));
-    } catch {}
+      if (res.ok) {
+        setTasks(tasks.map(t => t.id === id ? { ...t, status: 'approved' as const } : t));
+        toast.success('Task approved');
+      }
+    } catch {
+      toast.error('Failed to approve task');
+    }
   };
 
   const handleReject = async (id: string) => {
@@ -99,8 +109,13 @@ export default function TasksPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'rejected' }),
       });
-      if (res.ok) setTasks(tasks.map(t => t.id === id ? { ...t, status: 'rejected' as const } : t));
-    } catch {}
+      if (res.ok) {
+        setTasks(tasks.map(t => t.id === id ? { ...t, status: 'rejected' as const } : t));
+        toast.success('Task rejected');
+      }
+    } catch {
+      toast.error('Failed to reject task');
+    }
   };
 
   if (loading) {

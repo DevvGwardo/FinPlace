@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/db"
+import { isDemoMode, demoUser } from "@/lib/demo-data"
 
 export async function GET() {
   try {
+    if (isDemoMode()) {
+      return NextResponse.json(demoUser)
+    }
+
     const session = await auth()
 
     if (!session?.user?.id) {

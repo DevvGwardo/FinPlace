@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Plus, Lock, CreditCard, X } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 type Card = {
   id: string;
@@ -14,6 +15,7 @@ type Card = {
 };
 
 export default function CardsPage() {
+  const { toast } = useToast();
   const [cards, setCards] = useState<Card[]>([]);
   const [accountOptions, setAccountOptions] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,15 +28,17 @@ export default function CardsPage() {
       fetch('/api/cards').then(res => res.json()),
       fetch('/api/accounts').then(res => res.json()),
     ]).then(([cardsData, accountsData]) => {
-      setCards(cardsData.map((c: any) => ({
+      const cardsArr = Array.isArray(cardsData) ? cardsData : [];
+      const accountsArr = Array.isArray(accountsData) ? accountsData : [];
+      setCards(cardsArr.map((c: any) => ({
         id: c.id,
         last4: c.cardNumber.slice(-4),
         account: c.account?.name || 'Unknown',
         type: c.cardType as 'virtual' | 'physical',
         status: c.status as 'active' | 'locked',
       })));
-      setAccountOptions(accountsData.map((a: any) => ({ id: a.id, name: a.name })));
-      if (accountsData.length > 0) setFormAccount(accountsData[0].id);
+      setAccountOptions(accountsArr.map((a: any) => ({ id: a.id, name: a.name })));
+      if (accountsArr.length > 0) setFormAccount(accountsArr[0].id);
     }).finally(() => setLoading(false));
   }, []);
 
@@ -59,9 +63,12 @@ export default function CardsPage() {
         type: newCard.cardType,
         status: newCard.status,
       }, ...prev]);
+      toast.success('Card created successfully');
       setShowForm(false);
       setFormType('virtual');
-    } catch {}
+    } catch {
+      toast.error('Failed to create card');
+    }
   };
 
   if (loading) {

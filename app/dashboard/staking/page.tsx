@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, TrendingUp, DollarSign, Clock, Zap } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
+import { useConfetti } from '@/hooks/use-confetti';
 
 export default function StakingPage() {
   const [stakeAmount, setStakeAmount] = useState('');
@@ -13,8 +15,9 @@ export default function StakingPage() {
   const [earnedMonth, setEarnedMonth] = useState(0);
   const [apy, setApy] = useState(0);
   const [processing, setProcessing] = useState<'stake' | 'unstake' | null>(null);
-  const [toast, setToast] = useState('');
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+  const { fireConfetti } = useConfetti();
 
   const fetchStaking = () => {
     fetch('/api/staking')
@@ -31,11 +34,6 @@ export default function StakingPage() {
 
   useEffect(() => { fetchStaking(); }, []);
 
-  const showToast = (message: string) => {
-    setToast(message);
-    setTimeout(() => setToast(''), 2500);
-  };
-
   const handleStake = async () => {
     const val = Number(stakeAmount);
     if (!val || val <= 0) return;
@@ -47,11 +45,12 @@ export default function StakingPage() {
         body: JSON.stringify({ asset: 'USD', amount: val, apy: 5.2, lockPeriod: 30 }),
       });
       if (!res.ok) throw new Error();
-      showToast(`Successfully staked ${formatCurrency(val)}`);
+      toast.success(`Successfully staked ${formatCurrency(val)}`);
+      fireConfetti();
       setStakeAmount('');
       fetchStaking();
     } catch {
-      showToast('Failed to stake');
+      toast.error('Failed to stake');
     }
     setProcessing(null);
   };
@@ -66,7 +65,7 @@ export default function StakingPage() {
       const data = await stakingRes.json();
       const activePosition = data.positions?.[0];
       if (!activePosition) {
-        showToast('No active staking position');
+        toast.error('No active staking position');
         setProcessing(null);
         return;
       }
@@ -76,11 +75,12 @@ export default function StakingPage() {
         body: JSON.stringify({ status: 'completed' }),
       });
       if (!res.ok) throw new Error();
-      showToast(`Successfully unstaked`);
+      toast.success(`Successfully unstaked`);
+      fireConfetti();
       setUnstakeAmount('');
       fetchStaking();
     } catch {
-      showToast('Failed to unstake');
+      toast.error('Failed to unstake');
     }
     setProcessing(null);
   };
@@ -219,11 +219,6 @@ export default function StakingPage() {
         </div>
       </div>
 
-      {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-green text-black px-4 py-2 rounded-full text-sm font-medium shadow-lg">
-          {toast}
-        </div>
-      )}
     </div>
   );
 }

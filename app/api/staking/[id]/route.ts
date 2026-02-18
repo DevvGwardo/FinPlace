@@ -2,19 +2,28 @@ import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/db"
 import { toNumber } from "@/lib/serialize"
+import { isDemoMode, demoUnstake } from "@/lib/demo-data"
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
+
+    if (isDemoMode()) {
+      const result = demoUnstake(id)
+      if (!result.success) {
+        return NextResponse.json({ error: result.error }, { status: 404 })
+      }
+      return NextResponse.json({ id, status: "completed" })
+    }
+
     const session = await auth()
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
-
-    const { id } = await params
 
     const position = await prisma.stakingPosition.findFirst({
       where: { id, userId: session.user.id },

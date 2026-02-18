@@ -2,9 +2,16 @@ import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/db"
 import { toNumber } from "@/lib/serialize"
+import { isDemoMode, getDemoTransactions } from "@/lib/demo-data"
 
 export async function GET(request: Request) {
   try {
+    if (isDemoMode()) {
+      const { searchParams } = new URL(request.url)
+      const type = searchParams.get("type") || undefined
+      return NextResponse.json(getDemoTransactions(type))
+    }
+
     const session = await auth()
 
     if (!session?.user?.id) {

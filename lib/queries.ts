@@ -1,8 +1,17 @@
 import { auth } from "@/auth"
 import { prisma } from "@/lib/db"
 import { toNumber } from "@/lib/serialize"
+import {
+  isDemoMode,
+  getDemoTotalBalance,
+  getDemoAccounts,
+  getRecentDemoTransactions,
+  getDemoStakingSummary,
+} from "@/lib/demo-data"
 
 export async function getTotalBalance(): Promise<number> {
+  if (isDemoMode()) return getDemoTotalBalance()
+
   const session = await auth()
   if (!session?.user?.id) return 0
 
@@ -15,6 +24,8 @@ export async function getTotalBalance(): Promise<number> {
 }
 
 export async function getSubAccounts() {
+  if (isDemoMode()) return getDemoAccounts()
+
   const session = await auth()
   if (!session?.user?.id) return []
 
@@ -30,6 +41,8 @@ export async function getSubAccounts() {
 }
 
 export async function getRecentTransactions(limit = 5) {
+  if (isDemoMode()) return getRecentDemoTransactions(limit)
+
   const session = await auth()
   if (!session?.user?.id) return []
 
@@ -47,6 +60,8 @@ export async function getRecentTransactions(limit = 5) {
 }
 
 export async function getStakingSummary() {
+  if (isDemoMode()) return getDemoStakingSummary()
+
   const session = await auth()
   if (!session?.user?.id) {
     return { stakedBalance: 0, earnedTotal: 0, weightedApy: 0, positions: [] }

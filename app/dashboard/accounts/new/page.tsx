@@ -1,8 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { ArrowLeft, User, Briefcase, Settings2, Check } from 'lucide-react';
+import { SuccessCelebration } from '@/components/ui/success-celebration';
 
 const accountTypes = [
   { id: 'child', label: 'Child', icon: User, desc: 'For kids & teens' },
@@ -11,6 +13,7 @@ const accountTypes = [
 ];
 
 export default function CreateAccountPage() {
+  const { toast } = useToast();
   const [name, setName] = useState('');
   const [type, setType] = useState('child');
   const [initialFunding, setInitialFunding] = useState('');
@@ -19,14 +22,27 @@ export default function CreateAccountPage() {
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
     setProcessing(true);
-    setTimeout(() => {
-      setProcessing(false);
+    try {
+      const res = await fetch('/api/accounts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim(), type }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to create account');
+      }
       setSuccess(true);
-    }, 1500);
+      toast.success('Account created successfully');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to create account');
+    } finally {
+      setProcessing(false);
+    }
   };
 
   const handleReset = () => {
@@ -42,52 +58,54 @@ export default function CreateAccountPage() {
   if (success) {
     const typeLabel = accountTypes.find((t) => t.id === type)?.label ?? type;
     return (
-      <div className="max-w-lg mx-auto px-4">
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="w-16 h-16 rounded-full bg-green-dim flex items-center justify-center mb-5">
-            <Check size={32} className="text-green" />
-          </div>
-          <h1 className="text-2xl font-bold mb-2">Account Created!</h1>
-          <div className="bg-bg-card border border-border rounded-lg p-5 w-full mt-4 text-left">
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-text-muted">Name</span>
-                <span className="font-medium">{name}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-text-muted">Type</span>
-                <span className="font-medium capitalize">{typeLabel}</span>
-              </div>
-              {initialFunding && (
+      <SuccessCelebration>
+        <div className="max-w-lg mx-auto px-4">
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="w-16 h-16 rounded-full bg-green-dim flex items-center justify-center mb-5">
+              <Check size={32} className="text-green" />
+            </div>
+            <h1 className="text-2xl font-bold mb-2">Account Created!</h1>
+            <div className="bg-bg-card border border-border rounded-lg p-5 w-full mt-4 text-left">
+              <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-text-muted">Initial Funding</span>
-                  <span className="font-medium">${parseFloat(initialFunding).toFixed(2)}</span>
+                  <span className="text-text-muted">Name</span>
+                  <span className="font-medium">{name}</span>
                 </div>
-              )}
-              {enableDailyLimit && dailyLimit && (
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-text-muted">Daily Limit</span>
-                  <span className="font-medium">${parseFloat(dailyLimit).toFixed(2)}</span>
+                  <span className="text-text-muted">Type</span>
+                  <span className="font-medium capitalize">{typeLabel}</span>
                 </div>
-              )}
+                {initialFunding && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-text-muted">Initial Funding</span>
+                    <span className="font-medium">${parseFloat(initialFunding).toFixed(2)}</span>
+                  </div>
+                )}
+                {enableDailyLimit && dailyLimit && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-text-muted">Daily Limit</span>
+                    <span className="font-medium">${parseFloat(dailyLimit).toFixed(2)}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-3 mt-6">
+              <Link
+                href="/dashboard/accounts"
+                className="bg-green text-black font-semibold px-5 py-2.5 rounded-md text-sm hover:opacity-90 transition-opacity"
+              >
+                View Accounts
+              </Link>
+              <button
+                onClick={handleReset}
+                className="bg-bg-elevated border border-border px-5 py-2.5 rounded-md text-sm hover:border-border-hover transition-colors"
+              >
+                Create Another
+              </button>
             </div>
           </div>
-          <div className="flex items-center gap-3 mt-6">
-            <Link
-              href="/dashboard/accounts"
-              className="bg-green text-black font-semibold px-5 py-2.5 rounded-md text-sm hover:opacity-90 transition-opacity"
-            >
-              View Accounts
-            </Link>
-            <button
-              onClick={handleReset}
-              className="bg-bg-elevated border border-border px-5 py-2.5 rounded-md text-sm hover:border-border-hover transition-colors"
-            >
-              Create Another
-            </button>
-          </div>
         </div>
-      </div>
+      </SuccessCelebration>
     );
   }
 

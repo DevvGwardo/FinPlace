@@ -1,8 +1,10 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+import { ToastContainer } from '@/components/ui/toast';
+
+const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
 
 interface AuthUser {
   id: string;
@@ -36,7 +38,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
-  const supabase = createClient();
 
   const fetchProfile = useCallback(async () => {
     try {
@@ -57,22 +58,33 @@ export function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     fetchProfile();
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
-        fetchProfile();
-      } else {
-        setUser(null);
-        setIsLoading(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [supabase, fetchProfile]);
+    if (!isDemo) {
+      // Only set up Supabase auth listener when not in demo mode
+      let cleanup: (() => void) | undefined;
+      import('@/lib/supabase/client').then(({ createClient }) => {
+        const supabase = createClient();
+        const {
+          data: { subscription },
+        } = supabase.auth.onAuthStateChange((_event, session) => {
+          if (session) {
+            fetchProfile();
+          } else {
+            setUser(null);
+            setIsLoading(false);
+          }
+        });
+        cleanup = () => subscription.unsubscribe();
+      });
+      return () => cleanup?.();
+    }
+  }, [fetchProfile]);
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    if (!isDemo) {
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    }
     setUser(null);
     router.push('/login');
     router.refresh();
@@ -83,6 +95,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       value={{ user, isLoading, signOut: handleSignOut, refreshUser: fetchProfile }}
     >
       {children}
+      <ToastContainer />
     </AuthContext.Provider>
   );
 }

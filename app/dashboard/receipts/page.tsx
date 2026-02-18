@@ -21,6 +21,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface ReceiptItem {
   name: string;
@@ -102,6 +103,7 @@ const scannedReceiptTemplates: Omit<ReceiptData, 'id'>[] = [
 ];
 
 export default function ReceiptsPage() {
+  const { toast } = useToast();
   const [receipts, setReceipts] = useState<ReceiptData[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedReceipt, setSelectedReceipt] = useState<ReceiptData | null>(null);
@@ -188,9 +190,12 @@ export default function ReceiptsPage() {
       });
 
       setReceipts(prev => [scannedReceipt, ...prev]);
+      toast.success('Receipt saved');
       setScanComplete(false);
       setScannedReceipt(null);
-    } catch {}
+    } catch {
+      toast.error('Failed to save receipt');
+    }
   };
 
   const dismissScan = () => {
@@ -250,15 +255,19 @@ export default function ReceiptsPage() {
       };
 
       setReceipts(prev => [newReceipt, ...prev]);
+      toast.success('Receipt added');
       setShowManualEntry(false);
       setFormMerchant(''); setFormAmount(''); setFormCategory('Groceries');
       setFormDate(new Date().toISOString().split('T')[0]); setFormNotes('');
-    } catch {}
+    } catch {
+      toast.error('Failed to add receipt');
+    }
   };
 
   const deleteReceipt = (id: string) => {
     setReceipts((prev) => prev.filter((r) => r.id !== id));
     setSelectedReceipt(null);
+    toast.success('Receipt deleted');
   };
 
   if (loading) {

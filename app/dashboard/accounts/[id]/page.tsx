@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Settings, DollarSign, Snowflake, ArrowUpRight, ArrowDownLeft, TrendingUp } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 const account = {
   id: '1', name: 'Emma', type: 'child', status: 'active',
@@ -26,14 +27,7 @@ export default function AccountDetailPage() {
   const [showFundForm, setShowFundForm] = useState(false);
   const [fundAmount, setFundAmount] = useState('');
   const [processing, setProcessing] = useState(false);
-  const [toast, setToast] = useState('');
-
-  useEffect(() => {
-    if (toast) {
-      const timer = setTimeout(() => setToast(''), 2500);
-      return () => clearTimeout(timer);
-    }
-  }, [toast]);
+  const { toast } = useToast();
 
   const handleFund = () => {
     const amount = parseFloat(fundAmount);
@@ -41,7 +35,7 @@ export default function AccountDetailPage() {
     setProcessing(true);
     setTimeout(() => {
       setBalance((prev) => prev + amount);
-      setToast(`Funded $${amount.toFixed(2)} successfully`);
+      toast.success(`Funded $${amount.toFixed(2)} successfully`);
       setFundAmount('');
       setShowFundForm(false);
       setProcessing(false);
@@ -160,12 +154,7 @@ export default function AccountDetailPage() {
         </div>
       </div>
 
-      {/* Toast */}
-      {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-green text-black text-sm font-medium px-5 py-2.5 rounded-full shadow-lg z-50">
-          {toast}
-        </div>
-      )}
+
     </div>
   );
 }

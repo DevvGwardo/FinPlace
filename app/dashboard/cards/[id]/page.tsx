@@ -3,8 +3,10 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Eye, EyeOff, Lock, Unlock, AlertTriangle, CreditCard, Info } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 export default function CardSettingsPage() {
+  const { toast } = useToast();
   const [showNumber, setShowNumber] = useState(false);
   const [locked, setLocked] = useState(false);
   const [spendingLimit, setSpendingLimit] = useState('1000');
@@ -134,6 +136,7 @@ export default function CardSettingsPage() {
                 onClick={() => {
                   setReported(true);
                   setShowReportDialog(false);
+                  toast.warning('Card reported as lost/stolen');
                 }}
                 className="flex-1 bg-blue text-white font-semibold py-2.5 rounded-md text-sm hover:opacity-90 transition-opacity"
               >
@@ -161,6 +164,7 @@ export default function CardSettingsPage() {
                 onClick={() => {
                   setCancelled(true);
                   setShowCancelDialog(false);
+                  toast.error('Card has been cancelled');
                 }}
                 className="flex-1 bg-red-500 text-white font-semibold py-2.5 rounded-md text-sm hover:opacity-90 transition-opacity"
               >

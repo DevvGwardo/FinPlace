@@ -4,15 +4,16 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Search, Filter, Download, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 type TypeFilter = 'all' | 'deposit' | 'withdrawal' | 'transfer';
 
 export default function TransactionsPage() {
+  const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [filterOpen, setFilterOpen] = useState(false);
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [toast, setToast] = useState('');
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -24,8 +25,7 @@ export default function TransactionsPage() {
   }, []);
 
   const handleExport = () => {
-    setToast('Transactions exported!');
-    setTimeout(() => setToast(''), 2500);
+    toast.success('Transactions exported!');
   };
 
   const filtered = transactions.filter((tx: any) => {
@@ -178,11 +178,6 @@ export default function TransactionsPage() {
         </div>
       )}
 
-      {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-green text-black px-4 py-2 rounded-full text-sm font-medium shadow-lg">
-          {toast}
-        </div>
-      )}
     </div>
   );
 }

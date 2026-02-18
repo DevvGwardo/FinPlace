@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { ArrowLeft, Building2, Wallet, QrCode, CheckCircle } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
+import { SuccessCelebration } from '@/components/ui/success-celebration';
 
 const sources = [
   { id: 'bank', label: 'Connected Bank', desc: 'Chase •••• 4532', icon: Building2 },
@@ -12,6 +14,7 @@ const sources = [
 ];
 
 export default function FundPage() {
+  const { toast } = useToast();
   const [amount, setAmount] = useState('');
   const [source, setSource] = useState('bank');
   const [destination, setDestination] = useState('');
@@ -51,6 +54,7 @@ export default function FundPage() {
       setSuccess(true);
     } catch {
       setProcessing(false);
+      toast.error('Deposit failed. Please try again.');
     }
   };
 
@@ -80,42 +84,44 @@ export default function FundPage() {
   if (success) {
     const sourceLabel = sources.find((s) => s.id === source)?.label ?? source;
     return (
-      <div className="max-w-lg mx-auto px-4">
-        <div className="flex flex-col items-center justify-center py-12">
-          <div className="w-16 h-16 rounded-full bg-green-dim flex items-center justify-center mb-4">
-            <CheckCircle size={32} className="text-green" />
-          </div>
-          <h2 className="text-2xl font-bold mb-6">Deposit Successful!</h2>
-          <div className="w-full bg-bg-card border border-border rounded-lg p-5 mb-6">
-            <div className="flex justify-between text-sm py-2">
-              <span className="text-text-secondary">Amount</span>
-              <span className="font-medium text-green">${Number(amount).toFixed(2)}</span>
+      <SuccessCelebration>
+        <div className="max-w-lg mx-auto px-4">
+          <div className="flex flex-col items-center justify-center py-12">
+            <div className="w-16 h-16 rounded-full bg-green-dim flex items-center justify-center mb-4">
+              <CheckCircle size={32} className="text-green" />
             </div>
-            <div className="flex justify-between text-sm py-2 border-t border-border">
-              <span className="text-text-secondary">Source</span>
-              <span className="font-medium">{sourceLabel}</span>
+            <h2 className="text-2xl font-bold mb-6">Deposit Successful!</h2>
+            <div className="w-full bg-bg-card border border-border rounded-lg p-5 mb-6">
+              <div className="flex justify-between text-sm py-2">
+                <span className="text-text-secondary">Amount</span>
+                <span className="font-medium text-green">${Number(amount).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-sm py-2 border-t border-border">
+                <span className="text-text-secondary">Source</span>
+                <span className="font-medium">{sourceLabel}</span>
+              </div>
+              <div className="flex justify-between text-sm py-2 border-t border-border">
+                <span className="text-text-secondary">Destination</span>
+                <span className="font-medium">{destinations[destination]}</span>
+              </div>
             </div>
-            <div className="flex justify-between text-sm py-2 border-t border-border">
-              <span className="text-text-secondary">Destination</span>
-              <span className="font-medium">{destinations[destination]}</span>
+            <div className="flex gap-3 w-full">
+              <Link
+                href="/dashboard"
+                className="flex-1 text-center bg-bg-elevated border border-border text-text font-semibold py-3 rounded-md text-sm hover:border-border-hover transition-colors"
+              >
+                Back to Dashboard
+              </Link>
+              <button
+                onClick={handleReset}
+                className="flex-1 bg-green text-black font-semibold py-3 rounded-md text-sm hover:opacity-90 transition-opacity"
+              >
+                Fund Again
+              </button>
             </div>
-          </div>
-          <div className="flex gap-3 w-full">
-            <Link
-              href="/dashboard"
-              className="flex-1 text-center bg-bg-elevated border border-border text-text font-semibold py-3 rounded-md text-sm hover:border-border-hover transition-colors"
-            >
-              Back to Dashboard
-            </Link>
-            <button
-              onClick={handleReset}
-              className="flex-1 bg-green text-black font-semibold py-3 rounded-md text-sm hover:opacity-90 transition-opacity"
-            >
-              Fund Again
-            </button>
           </div>
         </div>
-      </div>
+      </SuccessCelebration>
     );
   }
 

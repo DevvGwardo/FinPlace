@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/db"
+import { isDemoMode, getDemoAccounts, createDemoAccount } from "@/lib/demo-data"
 
 export async function GET() {
   try {
+    if (isDemoMode()) {
+      return NextResponse.json(getDemoAccounts())
+    }
+
     const session = await auth()
 
     if (!session?.user?.id) {
@@ -27,6 +32,12 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    if (isDemoMode()) {
+      const body = await request.json()
+      const account = createDemoAccount(body)
+      return NextResponse.json(account, { status: 201 })
+    }
+
     const session = await auth()
 
     if (!session?.user?.id) {

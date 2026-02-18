@@ -3,6 +3,26 @@ import { updateSession } from "@/lib/supabase/middleware"
 
 export default async function middleware(request: NextRequest) {
   const { nextUrl } = request
+
+  // Demo mode — skip auth, redirect to dashboard as if logged in
+  if (process.env.NEXT_PUBLIC_DEMO_MODE === "true") {
+    const isLanding = nextUrl.pathname === "/"
+    const isAuthPage =
+      nextUrl.pathname.startsWith("/login") ||
+      nextUrl.pathname.startsWith("/register") ||
+      nextUrl.pathname.startsWith("/onboarding")
+
+    if (isLanding || isAuthPage) {
+      return NextResponse.redirect(new URL("/dashboard", nextUrl))
+    }
+
+    const response = NextResponse.next()
+    response.headers.set("X-Frame-Options", "DENY")
+    response.headers.set("X-Content-Type-Options", "nosniff")
+    response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin")
+    return response
+  }
+
   const { user, supabaseResponse } = await updateSession(request)
   const isLoggedIn = !!user
 

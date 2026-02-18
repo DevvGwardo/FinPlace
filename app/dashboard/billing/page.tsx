@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, CreditCard, Check, Loader2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 const allPlans = [
   { name: 'Free', price: '$0', features: ['2 sub-accounts', 'Basic controls', '1% staking APY'] },
@@ -21,8 +22,8 @@ export default function BillingPage() {
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [cardNumber, setCardNumber] = useState('');
   const [cardExpiry, setCardExpiry] = useState('');
-  const [toast, setToast] = useState('');
   const [processing, setProcessing] = useState<string | null>(null);
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -34,11 +35,6 @@ export default function BillingPage() {
       })
       .finally(() => setLoading(false));
   }, []);
-
-  const showToast = (message: string) => {
-    setToast(message);
-    setTimeout(() => setToast(''), 2500);
-  };
 
   const handleSwitchPlan = async (planName: string) => {
     setProcessing(planName);
@@ -52,15 +48,15 @@ export default function BillingPage() {
         body: JSON.stringify({ settings: { ...currentSettings, plan: planName } }),
       });
       setCurrentPlan(planName);
-      showToast(`Switched to ${planName} plan`);
+      toast.success(`Switched to ${planName} plan`);
     } catch {
-      showToast('Failed to switch plan');
+      toast.error('Failed to switch plan');
     }
     setProcessing(null);
   };
 
   const handleSavePayment = () => {
-    showToast('Payment method updated');
+    toast.success('Payment method updated');
     setShowPaymentForm(false);
     setCardNumber('');
     setCardExpiry('');
@@ -194,12 +190,6 @@ export default function BillingPage() {
         ))}
       </div>
 
-      {/* Toast */}
-      {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-green text-black text-sm font-medium px-6 py-3 rounded-full shadow-lg z-50">
-          {toast}
-        </div>
-      )}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { prisma } from "@/lib/db"
+import { isDemoMode, demoUser } from "@/lib/demo-data"
 
 export interface AppSession {
   user: {
@@ -14,6 +15,20 @@ export interface AppSession {
 }
 
 export async function auth(): Promise<AppSession | null> {
+  if (isDemoMode()) {
+    return {
+      user: {
+        id: demoUser.id,
+        email: demoUser.email,
+        name: demoUser.name,
+        image: demoUser.image,
+        accountType: demoUser.accountType,
+        walletAddress: demoUser.walletAddress,
+        onboardingComplete: demoUser.onboardingComplete,
+      },
+    }
+  }
+
   try {
     const supabase = await createClient()
     const {
