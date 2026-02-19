@@ -5,9 +5,17 @@ import Link from 'next/link';
 import { ArrowLeft, Plus, Search, Snowflake } from 'lucide-react';
 import { formatCurrency, getInitials } from '@/lib/utils';
 
+type Account = {
+  id: string;
+  name: string;
+  type: string;
+  balance: number | string;
+  isActive: boolean;
+};
+
 export default function AccountsPage() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [accounts, setAccounts] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -17,8 +25,15 @@ export default function AccountsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const filteredAccounts = accounts.filter((account: any) =>
+  const filteredAccounts = accounts.filter((account) =>
     account.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  const preferredMainAccount =
+    filteredAccounts.find((account) =>
+      account.name.toLowerCase().includes('main')
+    ) ?? filteredAccounts[0];
+  const secondaryAccounts = filteredAccounts.filter(
+    (account) => account.id !== preferredMainAccount?.id
   );
 
   if (loading) {
@@ -60,8 +75,36 @@ export default function AccountsPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {filteredAccounts.map((account) => (
+      {preferredMainAccount && (
+        <Link
+          key={preferredMainAccount.id}
+          href={`/dashboard/accounts/${preferredMainAccount.id}`}
+          className="block bg-bg-card border border-border rounded-lg p-5 hover:border-border-hover transition-colors mb-3"
+        >
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-green-dim text-green flex items-center justify-center text-sm font-semibold">
+                {getInitials(preferredMainAccount.name)}
+              </div>
+              <div>
+                <p className="font-semibold">{preferredMainAccount.name}</p>
+                <p className="text-xs text-text-muted capitalize">{preferredMainAccount.type} • Main</p>
+              </div>
+            </div>
+            {!preferredMainAccount.isActive ? (
+              <span className="flex items-center gap-1 text-xs bg-blue-dim text-blue px-2 py-1 rounded-full">
+                <Snowflake size={12} /> Frozen
+              </span>
+            ) : (
+              <span className="text-xs bg-green-dim text-green px-2 py-1 rounded-full">Active</span>
+            )}
+          </div>
+          <p className="text-2xl font-bold">{formatCurrency(Number(preferredMainAccount.balance))}</p>
+        </Link>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {secondaryAccounts.map((account) => (
           <Link
             key={account.id}
             href={`/dashboard/accounts/${account.id}`}
