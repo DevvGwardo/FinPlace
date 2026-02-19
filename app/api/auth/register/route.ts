@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { hashPassword } from "@/lib/password"
-import { supabaseAdmin } from "@/lib/supabase/admin"
+import { getSupabaseAdmin } from "@/lib/supabase/admin"
 import { z } from "zod"
 
 const registerSchema = z.object({
@@ -12,6 +12,7 @@ const registerSchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    const supabaseAdmin = getSupabaseAdmin()
     const body = await request.json()
 
     const result = registerSchema.safeParse(body)

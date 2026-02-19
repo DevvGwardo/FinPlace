@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/db"
-import { supabaseAdmin } from "@/lib/supabase/admin"
+import { getSupabaseAdmin } from "@/lib/supabase/admin"
 
 export async function PATCH(request: Request) {
   try {
+    const supabaseAdmin = getSupabaseAdmin()
     const session = await auth()
 
     if (!session?.user?.id) {
