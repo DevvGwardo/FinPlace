@@ -194,6 +194,14 @@ export default function LandingPage() {
           <FadeIn delay={0.7} direction="up" distance={20}>
             <div className="mt-12">
               <WaitlistForm className="justify-center" />
+              <div className="mt-4 flex justify-center">
+                <Link
+                  href="/dashboard"
+                  className="inline-flex items-center rounded-md border border-green/30 bg-green-dim px-4 py-2 text-sm font-semibold text-green hover:opacity-90 transition-opacity"
+                >
+                  Enter Demo Dashboard
+                </Link>
+              </div>
             </div>
           </FadeIn>
 

@@ -127,6 +127,7 @@ export function Header({ variant = 'landing' }: HeaderProps) {
             <Link href="#family" className="text-sm text-text-secondary hover:text-text transition-colors">Family</Link>
           </nav>
           <div className="hidden md:flex items-center gap-3">
+            <Link href="/dashboard" className="px-4 py-2 text-sm text-text-secondary hover:text-text transition-colors">View Demo</Link>
             <Link href="/login" className="px-4 py-2 text-sm text-text-secondary hover:text-text transition-colors">Log in</Link>
             <Link href="/register" className="px-4 py-2 text-sm bg-green text-black font-semibold rounded-md hover:opacity-90 transition-opacity">Join Waitlist</Link>
           </div>
@@ -140,6 +141,7 @@ export function Header({ variant = 'landing' }: HeaderProps) {
             <Link href="#staking" className="text-sm text-text-secondary">Staking</Link>
             <Link href="#family" className="text-sm text-text-secondary">Family</Link>
             <hr className="border-border" />
+            <Link href="/dashboard" className="text-sm text-text-secondary">View Demo</Link>
             <Link href="/login" className="text-sm text-text-secondary">Log in</Link>
             <Link href="/register" className="px-4 py-2 text-sm bg-green text-black font-semibold rounded-md text-center">Join Waitlist</Link>
           </div>
