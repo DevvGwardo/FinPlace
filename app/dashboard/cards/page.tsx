@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Plus, Lock, CreditCard, X } from 'lucide-react';
-import { formatCurrency } from '@/lib/utils';
+import { ArrowLeft, Plus, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { FlippableCreditCard } from '@/components/ui/credit-debit-card';
 
 type Card = {
   id: string;
@@ -12,7 +12,31 @@ type Card = {
   account: string;
   type: 'virtual' | 'physical';
   status: 'active' | 'locked';
+  expiry: string;
+  holderName: string;
 };
+
+type ApiCard = {
+  id: string;
+  cardNumber: string;
+  cardType: 'virtual' | 'physical';
+  status: 'active' | 'locked';
+  expiryMonth?: number;
+  expiryYear?: number;
+  account?: { name?: string };
+};
+
+type ApiAccount = {
+  id: string;
+  name: string;
+};
+
+const DEMO_HOLDER = 'FINPLACE MEMBER';
+
+function formatExpiry(month?: number, year?: number) {
+  if (!month || !year) return '12/30';
+  return `${String(month).padStart(2, '0')}/${String(year).slice(-2)}`;
+}
 
 export default function CardsPage() {
   const { toast } = useToast();
@@ -30,14 +54,16 @@ export default function CardsPage() {
     ]).then(([cardsData, accountsData]) => {
       const cardsArr = Array.isArray(cardsData) ? cardsData : [];
       const accountsArr = Array.isArray(accountsData) ? accountsData : [];
-      setCards(cardsArr.map((c: any) => ({
+      setCards((cardsArr as ApiCard[]).map((c) => ({
         id: c.id,
         last4: c.cardNumber.slice(-4),
         account: c.account?.name || 'Unknown',
         type: c.cardType as 'virtual' | 'physical',
         status: c.status as 'active' | 'locked',
+        expiry: formatExpiry(c.expiryMonth, c.expiryYear),
+        holderName: DEMO_HOLDER,
       })));
-      setAccountOptions(accountsArr.map((a: any) => ({ id: a.id, name: a.name })));
+      setAccountOptions((accountsArr as ApiAccount[]).map((a) => ({ id: a.id, name: a.name })));
       if (accountsArr.length > 0) setFormAccount(accountsArr[0].id);
     }).finally(() => setLoading(false));
   }, []);
@@ -47,14 +73,38 @@ export default function CardsPage() {
     setShowForm(true);
   };
 
+  const createLocalDemoCard = () => {
+    const randomLast4 = String(Math.floor(1000 + Math.random() * 9000));
+    setCards(prev => [{
+      id: `demo-${Date.now()}`,
+      last4: randomLast4,
+      account: accountOptions.find(a => a.id === formAccount)?.name || 'Main Checking',
+      type: formType,
+      status: 'active',
+      expiry: '12/30',
+      holderName: DEMO_HOLDER,
+    }, ...prev]);
+    toast.success('Demo card created');
+    setShowForm(false);
+    setFormType('virtual');
+  };
+
   const handleCreateCard = async () => {
+    if (accountOptions.length === 0) {
+      createLocalDemoCard();
+      return;
+    }
+
     try {
       const res = await fetch('/api/cards', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accountId: formAccount, cardType: formType }),
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        createLocalDemoCard();
+        return;
+      }
       const newCard = await res.json();
       setCards(prev => [{
         id: newCard.id,
@@ -62,12 +112,14 @@ export default function CardsPage() {
         account: accountOptions.find(a => a.id === formAccount)?.name || 'Account',
         type: newCard.cardType,
         status: newCard.status,
+        expiry: formatExpiry(newCard.expiryMonth, newCard.expiryYear),
+        holderName: DEMO_HOLDER,
       }, ...prev]);
       toast.success('Card created successfully');
       setShowForm(false);
       setFormType('virtual');
     } catch {
-      toast.error('Failed to create card');
+      createLocalDemoCard();
     }
   };
 
@@ -172,34 +224,49 @@ export default function CardsPage() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
-        {cards.map((card) => (
-          <Link
-            key={card.id}
-            href={`/dashboard/cards/${card.id}`}
-            className="bg-bg-card border border-border rounded-lg overflow-hidden hover:border-border-hover transition-colors"
-          >
-            <div className={`h-40 p-5 flex flex-col justify-between ${card.status === 'locked' ? 'bg-bg-elevated' : 'bg-gradient-to-br from-green/20 to-green/5'}`}>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-text-muted uppercase tracking-wide">{card.type}</span>
-                {card.status === 'locked' ? (
-                  <Lock size={16} className="text-text-muted" />
-                ) : (
-                  <CreditCard size={16} className="text-green" />
-                )}
+        {cards.map((card) => {
+          const isDemoCard = card.id.startsWith('demo-');
+          const cardTile = (
+            <>
+              <div className="p-4">
+                <FlippableCreditCard
+                  className="h-44 w-full"
+                  cardholderName={card.holderName}
+                  cardNumber={`•••• •••• •••• ${card.last4}`}
+                  expiryDate={card.expiry}
+                  cvv="•••"
+                />
               </div>
-              <div>
-                <p className="font-mono text-lg tracking-widest">•••• •••• •••• {card.last4}</p>
-                <p className="text-xs text-text-muted mt-1">{card.account}</p>
+              <div className="p-4 flex items-center justify-between">
+                <span className={`text-xs px-2 py-1 rounded-full ${card.status === 'active' ? 'bg-green-dim text-green' : 'bg-bg-elevated text-text-muted'}`}>
+                  {card.status === 'active' ? 'Active' : 'Locked'} · {card.type}
+                </span>
+                <span className="text-xs text-text-muted">{card.account}</span>
               </div>
-            </div>
-            <div className="p-4 flex items-center justify-between">
-              <span className={`text-xs px-2 py-1 rounded-full ${card.status === 'active' ? 'bg-green-dim text-green' : 'bg-bg-elevated text-text-muted'}`}>
-                {card.status === 'active' ? 'Active' : 'Locked'}
-              </span>
-              <span className="text-xs text-text-muted">Manage &rarr;</span>
-            </div>
-          </Link>
-        ))}
+            </>
+          );
+
+          if (isDemoCard) {
+            return (
+              <div
+                key={card.id}
+                className="bg-bg-card border border-border rounded-lg overflow-hidden"
+              >
+                {cardTile}
+              </div>
+            );
+          }
+
+          return (
+            <Link
+              key={card.id}
+              href={`/dashboard/cards/${card.id}`}
+              className="bg-bg-card border border-border rounded-lg overflow-hidden hover:border-border-hover transition-colors"
+            >
+              {cardTile}
+            </Link>
+          );
+        })}
       </div>
 
       <div className="bg-bg-card border border-border rounded-lg p-4 md:p-6">

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Plus, Check, Clock, X, Camera } from 'lucide-react';
-import { formatDate, formatCurrency } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
 type Task = {
@@ -13,6 +13,15 @@ type Task = {
   reward: number;
   due: string;
   status: 'pending' | 'submitted' | 'approved' | 'rejected';
+};
+
+type ApiTask = {
+  id: string;
+  title: string;
+  assignedTo: string | null;
+  reward: number | string;
+  dueDate: string | null;
+  status: Task['status'];
 };
 
 const statusStyles = {
@@ -43,7 +52,7 @@ export default function TasksPage() {
     fetch('/api/tasks')
       .then(res => res.json())
       .then(data => {
-        setTasks(data.map((t: any) => ({
+        setTasks((data as ApiTask[]).map((t) => ({
           id: t.id,
           name: t.title,
           assignedTo: t.assignedTo || 'Unassigned',
@@ -214,44 +223,61 @@ export default function TasksPage() {
       )}
 
       <div className="flex flex-col gap-2">
-        {tasks.map((task) => {
-          const StatusIcon = statusIcons[task.status];
-          return (
-            <div key={task.id} className="bg-bg-card border border-border rounded-lg p-4 hover:border-border-hover transition-colors">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-md flex items-center justify-center ${statusStyles[task.status]}`}>
-                    <StatusIcon size={14} />
+        {tasks.length === 0 ? (
+          <div className="bg-bg-card border border-border rounded-lg px-6 py-10 text-center">
+            <p className="text-lg font-semibold">No tasks or chores yet</p>
+            <p className="text-sm text-text-muted mt-2">
+              Create your first one to start assigning rewards and tracking progress.
+            </p>
+            {!showForm && (
+              <button
+                onClick={() => setShowForm(true)}
+                className="inline-flex items-center gap-2 mt-5 bg-green text-black font-semibold px-4 py-2 rounded-md text-sm hover:opacity-90 transition-opacity"
+              >
+                <Plus size={16} /> Create your first task
+              </button>
+            )}
+          </div>
+        ) : (
+          tasks.map((task) => {
+            const StatusIcon = statusIcons[task.status];
+            return (
+              <div key={task.id} className="bg-bg-card border border-border rounded-lg p-4 hover:border-border-hover transition-colors">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-md flex items-center justify-center ${statusStyles[task.status]}`}>
+                      <StatusIcon size={14} />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">{task.name}</p>
+                      <p className="text-xs text-text-muted">Assigned to {task.assignedTo} &middot; Due {task.due}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-medium text-sm">{task.name}</p>
-                    <p className="text-xs text-text-muted">Assigned to {task.assignedTo} &middot; Due {task.due}</p>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-medium text-green">${task.reward.toFixed(2)}</span>
+                    <span className={`text-xs px-2 py-1 rounded-full capitalize ${statusStyles[task.status]}`}>{task.status}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-medium text-green">${task.reward.toFixed(2)}</span>
-                  <span className={`text-xs px-2 py-1 rounded-full capitalize ${statusStyles[task.status]}`}>{task.status}</span>
-                </div>
+                {task.status === 'submitted' && (
+                  <div className="flex items-center gap-2 mt-3 ml-11">
+                    <button
+                      onClick={() => handleApprove(task.id)}
+                      className="text-xs bg-green text-black px-3 py-1.5 min-h-[44px] rounded-md font-medium hover:opacity-90 transition-opacity"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => handleReject(task.id)}
+                      className="text-xs bg-red-500/10 text-red-500 px-3 py-1.5 min-h-[44px] rounded-md font-medium hover:bg-red-500/20 transition-colors"
+                    >
+                      Reject
+                    </button>
+                  </div>
+                )}
               </div>
-              {task.status === 'submitted' && (
-                <div className="flex items-center gap-2 mt-3 ml-11">
-                  <button
-                    onClick={() => handleApprove(task.id)}
-                    className="text-xs bg-green text-black px-3 py-1.5 min-h-[44px] rounded-md font-medium hover:opacity-90 transition-opacity"
-                  >
-                    Approve
-                  </button>
-                  <button
-                    onClick={() => handleReject(task.id)}
-                    className="text-xs bg-red-500/10 text-red-500 px-3 py-1.5 min-h-[44px] rounded-md font-medium hover:bg-red-500/20 transition-colors"
-                  >
-                    Reject
-                  </button>
-                </div>
-              )}
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
     </div>
   );
