@@ -29,6 +29,22 @@ const accountIds = {
   kids: "acct-kids-004",
 }
 
+type DemoTransaction = {
+  id: string
+  userId: string
+  accountId: string
+  type: string
+  amount: number
+  currency: string
+  description: string | null
+  category: string | null
+  status: string
+  counterparty: string | null
+  metadata: Record<string, unknown>
+  createdAt: Date
+  account: { name: string }
+}
+
 let accounts = [
   {
     id: accountIds.checking,
@@ -90,7 +106,7 @@ let accounts = [
 
 // --- Transactions ---
 
-let transactions = [
+let transactions: DemoTransaction[] = [
   {
     id: "tx-001",
     userId: DEMO_USER_ID,
